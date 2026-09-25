@@ -1,0 +1,43 @@
+================================================================
+CUDA SUBGRAPH PARTITIONING: OVERVIEW & RESULTS
+================================================================
+
+FILE OVERVIEW
+-------------
+- `generate_test_model.py`: Generates a synthetic 79-node ONNX model containing heavy Convolution blocks separated by dynamic `Unique` boundaries.
+- `partitioner.py`: Topologically traverses the model to identify rule-based boundaries and slices it into independent CUDA-capturable and eager partitions.
+- `benchmark.py`: Orchestrates the partitioned subgraphs in Python using ORT's `IOBinding` to seamlessly pass data on the GPU, avoiding CPU memory overhead.
+- `benchmark_native.py`: Attempts to run the unpartitioned models natively in a single C++ ORT session to establish a baseline.
+
+FINAL RESULTS
+-------------
+
+Results from running `python benchmark.py`:
+
+--- Benchmarking Orchestration: partitions_synthetic ---
+Warming up...
+Measuring 100 iterations...
+Average Latency (Eager fallback):      22.514 ms
+Average Latency (CUDA Subgraphs):      18.290 ms
+-> Kernel Launch Time Saved:           4.224 ms per inference
+
+--- Benchmarking Orchestration: partitions_test ---
+Warming up...
+Measuring 100 iterations...
+Average Latency (Eager fallback):      1.093 ms
+Average Latency (CUDA Subgraphs):      0.499 ms
+-> Kernel Launch Time Saved:           0.594 ms per inference
+
+
+Results from running `python benchmark_native.py`:
+
+--- Native ORT Benchmark: synthetic_boundary_model.onnx ---
+Native Eager Latency (CUDA Graph OFF): 20.383 ms
+Native Latency (CUDA Graph ON):        [REJECTED BY ORT]
+-> Note: Native ORT refused to capture this model because it contains dynamic boundaries.
+-> This is expected! Use `benchmark.py` to test the custom subgraph orchestrator.
+
+--- Native ORT Benchmark: test_model.onnx ---
+Native Eager Latency (CUDA Graph OFF): 1.027 ms
+Native Latency (CUDA Graph ON):        0.407 ms
+-> Launch Time Saved Natively:         0.619 ms per inference
